@@ -3,11 +3,73 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+
 conn = sqlite3.connect("expenses.db")
 
 cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+)
+""")
+
+conn.commit()
+cursor.execute("""
+INSERT OR IGNORE INTO users(username,password)
+VALUES('admin','admin123')
+""")
+
+conn.commit()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS expenses(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT,
+    category TEXT,
+    amount INTEGER,
+    salary INTEGER
+)
+""")
+
+conn.commit()
 
 st.title("Personal Finance Tracker")
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if not st.session_state.logged_in:
+
+    st.subheader("Login")
+
+    username = st.text_input("Username")
+
+    password = st.text_input(
+        "Password",
+        type="password"
+    )
+
+    if st.button("Login"):
+
+        cursor.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (username, password)
+        )
+
+        user = cursor.fetchone()
+
+        if user:
+
+            st.session_state.logged_in = True
+
+            st.success("Login Successful")
+
+            st.rerun()
+
+        else:
+
+            st.error("Invalid Username or Password")
+
+    st.stop()
 
 menu = st.sidebar.selectbox(
     "Menu",
@@ -93,6 +155,9 @@ elif menu == "Category Summary":
 
     for row in data:
         st.write(f"{row[0]} : {row[1]}")
+
+
+# DELETE EXPENSE
 elif menu == "Delete Expense":
 
     st.subheader("Delete Expense")
@@ -112,6 +177,9 @@ elif menu == "Delete Expense":
         conn.commit()
 
         st.success("Expense Deleted Successfully")
+
+
+# MONTHLY BUDGET
 elif menu == "Monthly Budget":
 
     budget = st.number_input("Enter Budget")
@@ -133,6 +201,9 @@ elif menu == "Monthly Budget":
 
     if remaining < 0:
         st.error("Budget Exceeded!")
+
+
+# SEARCH EXPENSE
 elif menu == "Search Expense":
 
     search = st.text_input("Enter Category")
@@ -147,6 +218,9 @@ elif menu == "Search Expense":
         data = cursor.fetchall()
 
         st.write(data)
+
+
+# UPDATE EXPENSE
 elif menu == "Update Expense":
 
     expense_id = st.number_input(
@@ -166,6 +240,9 @@ elif menu == "Update Expense":
         conn.commit()
 
         st.success("Expense Updated")
+
+
+# MONTHLY REPORT
 elif menu == "Monthly Report":
 
     cursor.execute("SELECT SUM(amount) FROM expenses")
@@ -184,6 +261,9 @@ elif menu == "Monthly Report":
 
     for row in data:
         st.write(f"{row[0]} : {row[1]}")
+
+
+# PIE CHART
 elif menu == "Pie Chart":
 
     cursor.execute("""
@@ -210,6 +290,9 @@ elif menu == "Pie Chart":
     )
 
     st.pyplot(fig)
+
+
+# EXPORT REPORT
 elif menu == "Export Report":
 
     cursor.execute("SELECT SUM(amount) FROM expenses")
