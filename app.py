@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ---------------- DATABASE ----------------
-conn = sqlite3.connect("expenses.db", check_same_thread=False)
+conn = sqlite3.connect("expenses.db", check_same_thread=False, timeout=10)
 cursor = conn.cursor()
 
 # USERS TABLE
@@ -162,7 +162,9 @@ def main_app():
             SELECT SUM(amount) FROM expenses WHERE username=?
         """, (st.session_state.username,))
 
-        total = cursor.fetchone()[0] or 0
+        result = cursor.fetchone()
+
+        total = result[0] if result and result[0] is not None else 0
         st.subheader(f"Total Expenses: {total}")
 
     # ---------------- CATEGORY ----------------
@@ -202,7 +204,9 @@ def main_app():
             SELECT SUM(amount) FROM expenses WHERE username=?
         """, (st.session_state.username,))
 
-        total = cursor.fetchone()[0] or 0
+        result = cursor.fetchone()
+
+        total = result[0] if result and result[0] is not None else 0
 
         remaining = budget - total
 
@@ -246,7 +250,9 @@ def main_app():
             SELECT SUM(amount) FROM expenses WHERE username=?
         """, (st.session_state.username,))
 
-        total = cursor.fetchone()[0] or 0
+        result = cursor.fetchone()
+
+        total = result[0] if result and result[0] is not None else 0
         st.subheader(f"Total: {total}")
 
         cursor.execute("""
@@ -280,23 +286,40 @@ def main_app():
 
     # ---------------- EXPORT ----------------
     elif menu == "Export Report":
-        cursor.execute("""
-            SELECT category, SUM(amount)
-            FROM expenses
-            WHERE username=?
-            GROUP BY category
-        """, (st.session_state.username,))
 
-        data = cursor.fetchall()
+    # total expenses (safe & correct)
+     cursor.execute("""
+        SELECT SUM(amount)
+        FROM expenses
+        WHERE username=?
+    """, (st.session_state.username,))
 
-        with open("report.txt", "w") as f:
-            f.write("Monthly Report\n\n")
-            for row in data:
-                f.write(f"{row[0]} : {row[1]}\n")
+    result = cursor.fetchone()
 
-        st.success("Report exported")
+    total = result[0] if result and result[0] is not None else 0
 
+    # category breakdown
+    cursor.execute("""
+        SELECT category, SUM(amount)
+        FROM expenses
+        WHERE username=?
+        GROUP BY category
+    """, (st.session_state.username,))
 
+    data = cursor.fetchall()
+
+    report = "Monthly Report\n\n"
+    report += f"Total Expenses: {total}\n\n"
+
+    for row in data:
+        report += f"{row[0]} : {row[1]}\n"
+
+    st.download_button(
+        label="📥 Download Report",
+        data=report,
+        file_name="report.txt",
+        mime="text/plain"
+    )
 # ---------------- APP FLOW ----------------
 if not st.session_state.logged_in:
     auth_page()
