@@ -1,0 +1,7 @@
+Monthly Report
+
+Total Expenses : 18500
+
+food : 2000
+rent : 15000
+trip : 1500
